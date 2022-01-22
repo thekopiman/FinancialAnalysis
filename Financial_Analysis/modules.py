@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 import os
+import itertools
 
 
 class StockAnalysis():
@@ -16,6 +17,8 @@ class StockAnalysis():
         '''
         self.stock = get_data(ticker, start_date, end_date,
                               index_as_date, interval)
+        # print(self.stock)
+        self.stock = self.stock[self.stock['close'].notna()]
         self.stock_ticker = ticker
 
     def get_stock_data(self):
@@ -94,14 +97,14 @@ class CrossReferencing:
         return sorted(set.intersection(*list_of_dates))
 
     @classmethod
-    def merge_data(self, data, common_dates, filter_to_close=True) -> pd.DataFrame:
+    def merge_data(self, data, common_dates, filter_to_adjclose=True) -> pd.DataFrame:
         '''
         data: Needs to be a dict with the key (ticker) and value (dataframe)
         common_dates: set/list/tuple of dates
-        filter_to_close: Bool -> Filter each dataframe to its close value only.
+        filter_to_adjclose: Bool -> Filter each dataframe to its adjclose value only.
 
         Merge the Dataframes according to their common dates.
-        Take note that the return Dataframes will have their headers edited to their corresponding column name based on its ticker. Eg ("amzn_close", "googl_close")
+        Take note that the return Dataframes will have their headers edited to their corresponding column name based on its ticker. Eg ("amzn_adjclose", "googl_adjclose")
 
         Return Dataframe
         '''
@@ -109,24 +112,22 @@ class CrossReferencing:
         # print(len(common_dates))
         for df_name in data:
             df = data[df_name].filter_common_dates(common_dates, update=True)
+            # print(df.count())
 
             # df.to_excel(f"{os.getcwd()}\{df_name}.xlsx",
             #             index=False, header=True)
-            if filter_to_close:
-                df = df.filter(items=["close"])
+            if filter_to_adjclose:
+                df = df.filter(items=["adjclose"])
             for header in list(df.columns):
                 # print(f"{df_name}_{header}")
                 df.rename(columns={header: str(
                     f"{df_name}_{header}")}, inplace=True)
-            print(f"R,C = {df.shape}")
-
             data[df_name] = df  # Update the dataframe into the data
         # print(pd.DataFrame(common_dates))
-        for x in data.values():
-            print(x.shape)
+        # for x in data.values():
+        #     print(x.shape)
 
         return self.merging_error_solver(common_dates, data.values())
-        # return pd.concat([x for x in data.values()], axis=1)
 
     @classmethod
     def merging_error_solver(self, common_dates, dataframes):
@@ -134,22 +135,32 @@ class CrossReferencing:
         For some reason, for a certain combination of stocks, merging is not always successful.
         '''
 
+        # Basic Concat Function
         final_df = pd.concat([pd.DataFrame(common_dates, columns=[
                              "date"])] + [x for x in dataframes], axis=1)
 
         if final_df.shape[0] == list(dataframes)[0].shape[0]:
             return final_df
         else:
-            ################# SOLVE THIS SHIT ########################
-            raise ValueError
+            # Convert DataFrames into Numpy Arrays First
+            print("Dataframe to Array conversion has occured")
+            headers = [list(x.columns)[0] for x in dataframes]
+
+            arrays = np.concatenate([dataframe.to_numpy()
+                                    for dataframe in dataframes], axis=1)
+            # print(arrays)
+            return pd.concat([pd.DataFrame(common_dates, columns=[
+                             "date"]), pd.DataFrame(arrays, columns=headers)], axis=1)
 
 
 if __name__ == '__main__':
     portfolio = CrossReferencing(
-        ["^N225", "M44U.SI", "^STI"], start_date="12/04/2012", end_date="12/04/2019")
+        ["^N225", "M44U.SI", "^STI", "AMZN"], start_date="12/04/2012", end_date="12/04/2019")
 
     print(portfolio.merged_df.shape)
+    # print(portfolio.merged_df)
     # print(os.getcwd())
+    portfolio.merged_df.to_excel(
+        f"{os.getcwd()}\Everything.xlsx", index=False, header=True)
 
-    # portfolio.merged_df.to_excel(
-    #     f"{os.getcwd()}\Everything.xlsx", index=False, header=True)
+    print("End")
