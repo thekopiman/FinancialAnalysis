@@ -2,14 +2,16 @@ from yahoo_fin.stock_info import get_data
 import pandas as pd
 import numpy as np
 from datetime import datetime
-from modules import StockAnalysis
+from modules import StockAnalysis, CrossReferencing
+from analysis import ReturnsAnalysis
+from portfolio import Portfolio
 
 
 def main():
-    amazon_daily = StockAnalysis("amzn", start_date="12/04/2009",
-                                 end_date="12/10/2009", index_as_date=False, interval="1d")
-
-    print(amazon_daily.get_dates(datatype="set"))
+    '''
+    Main wrapper for all the modules used in this analysis
+    '''
+    pass
 
 
 if __name__ == '__main__':
